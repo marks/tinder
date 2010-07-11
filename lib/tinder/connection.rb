@@ -27,13 +27,16 @@ module Tinder
       @uri = URI.parse("#{@options[:ssl] ? 'https' : 'http' }://#{subdomain}.#{HOST}")
       @token = options[:token]
       
-      # Check for a redirect code at /login to see if we need to use SSL for this connection
+      # Check for a redirect code at /rooms.json to see if we need to use SSL for this connection
       # Implemented with Net:HTTP instead of HTTParty because the latter seems to blindly follow the redirect
-      ssl_check_response = Net::HTTP.new(@uri.host).request_get("/login")
-      if ssl_check_response.code == "302"
-        @uri.scheme = "https"
-        @options[:ssl] = true
-      end
+      Net::HTTP.start(@uri.host) {|http|
+        ssl_check_request = Net::HTTP::Get.new('/rooms.json')
+        ssl_check_request.basic_auth(@token, 'x')
+        if http.request(ssl_check_request).code == "302"
+          @uri.scheme = "https"
+          @options[:ssl] = true
+        end
+      }
             
       class << self
         include HTTParty
